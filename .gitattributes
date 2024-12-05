@@ -1,0 +1,45 @@
+# Set default behavior to automatically normalize line endings.
+* text=auto
+
+# Explicitly declare text files to be normalized and converted to LF in the repository.
+*.c text
+*.cpp text
+*.h text
+*.py text
+*.java text
+*.js text
+*.html text
+*.css text
+*.md text
+*.txt text
+*.yml text
+*.yaml text
+*.json text
+*.sh text
+
+# Declare binary files to be exempt from line-ending normalization.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.mov binary
+*.mp4 binary
+*.avi binary
+*.mp3 binary
+*.wav binary
+*.zip binary
+*.gz binary
+*.pdf binary
+*.exe binary
+*.dll binary
+*.so binary
+
+# Handle Windows-specific files.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Shell scripts and configuration files to use Unix-style line endings.
+*.sh text eol=lf
+*.conf text eol=lf
+*.env text eol=lf
