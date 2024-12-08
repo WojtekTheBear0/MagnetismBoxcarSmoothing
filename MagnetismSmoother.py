@@ -160,7 +160,7 @@ def BigMain(boxCarSize):
     validResiduals = largestConnectedComponentResiduals[~np.isnan(largestConnectedComponentResiduals)]
     stdConnectedStructure = np.std(validResiduals)
 
-    print(f"Standard Deviation of Residuals in Central LargestConnectedStructure: {stdConnectedStructure:.4f} degrees")
+    print(f"Standard Deviation of Residuals in Highest Intensity Structure: {stdConnectedStructure:.4f} degrees")
     BoxCarDictionary[np.round(boxCarSize, 1)] = np.round(stdConnectedStructure, 3)
 
 
