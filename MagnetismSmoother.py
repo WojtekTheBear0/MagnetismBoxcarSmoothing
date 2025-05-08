@@ -1,7 +1,8 @@
-﻿import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import numpy as np 
 import sys
 from functions import *
+from AttributesOfComponent import *
 from astropy.io import fits 
 from astropy.wcs import WCS
 from scipy.ndimage import label
@@ -10,16 +11,16 @@ np.set_printoptions(threshold=np.inf)
 
 PolFracFileExists = True            # Variable to grab data from pfrac file instead of calculating it
 CreateSeparatePolFracFile = False   # Determines if polCalc_FITS makes a new file in the directory
-IterateMultipleBoxCars = True       # Should the code run itself multiple times on different boxcars
+IterateMultipleBoxCars = False       # Should the code run itself multiple times on different boxcars
 BoxCarIncrementRange = [1, 8]       # Box car values to try if IterateMultipleBoxCars
 incrementAmount = 1                 # Amount to increment boxcar by
 BoxCarDictionary = {}               # Hash table with key box car and std value of residuals
 BoxCarSize = 3                      # If = 3 then boxcar is 3x3, will matter if ~IterateMultipleBoxCars
-QuiverMagnifier = 9                 # Will change the size of the lines in the plot uniformly
+QuiverMagnifier = 15                # Will change the size of the lines in the plot uniformly
 
-qFile = 'HH212M.flagging_brightlines.selfcal_avgch.StokesQ.finalmfs.image.fits'
-uFile = 'HH212M.flagging_brightlines.selfcal_avgch.StokesU.finalmfs.image.fits'
-iFile = 'HH212M.flagging_brightlines.selfcal_avgch.StokesI.finalmfs.image.fits'
+qFile = 'omc1_850_q.fits'
+uFile = 'omc1_850_u.fits'
+iFile = 'omc1_850_i.fits'
 
 
 def ApplyBoxcarAngleSmoothing(polarizationAngleData, mask, boxCarSize):
@@ -30,7 +31,7 @@ def ApplyBoxcarAngleSmoothing(polarizationAngleData, mask, boxCarSize):
 
     windowDimensionsSize = int(np.round(sourceWindowScale * boxCarSize))
     halfWindow = windowDimensionsSize // 2
-    print("Dimension of Boxcar: ", windowDimensionsSize)
+    print(f'\nDimension of Boxcar: {windowDimensionsSize} pixels')
 
     # Go over the data but ignore the edges to avoid out of bounds
     for i in range(halfWindow, polarizationAngleData.shape[0] - halfWindow):
@@ -50,8 +51,9 @@ def SourceWindowCalculator():
     qHDU = fits.open(qFile)
     bMajor = qHDU[0].header.get('BMAJ')
     bMinor = qHDU[0].header.get('BMIN')
+    cdelt1 = qHDU[0].header.get('CDELT1')
     
-    return np.sqrt(bMajor * bMinor) * 3600 / 0.1
+    return (np.sqrt(bMajor * bMinor) / cdelt1) * 3600
 
 
 def ProcessWindow(window, windowSize, maskWindow, originalValue):
@@ -98,9 +100,9 @@ def BigMain(boxCarSize):
     Q_rms = 0.000069 #float(argv[5])
     U_rms = 0.000069 #float(argv[6])
 
-    qData = qHDU[0].data[0, 0, :, :]  
-    uData = uHDU[0].data[0, 0, :, :]  
-    iData = iHDU[0].data[0, 0, :, :] 
+    qData = qHDU[0].data[0, :, :] 
+    uData = uHDU[0].data[0, :, :]  
+    iData = iHDU[0].data[0, :, :] 
 
     polarizationAngleData = 0.5 * np.degrees(np.arctan2(uData, qData)) 
 
@@ -113,10 +115,10 @@ def BigMain(boxCarSize):
     polarizationFractionData[iData <= 0] = np.nan
 
     if PolFracFileExists: 
-        sourceName = qFile.split(".")[0]
+        sourceName = qFile.split("_")[0]
         pfracFileName = sourceName + ".pfrac.fits"
         
-        polarizationFractionData = fits.open(pfracFileName)[0].data[0, 0, :, :]
+        polarizationFractionData = fits.open(pfracFileName)[0].data[0, :, :]
         
     elif CreateSeparatePolFracFile:
         sourceName = qFile.split("_")[0]
@@ -160,7 +162,11 @@ def BigMain(boxCarSize):
     validResiduals = largestConnectedComponentResiduals[~np.isnan(largestConnectedComponentResiduals)]
     stdConnectedStructure = np.std(validResiduals)
 
-    print(f"Standard Deviation of Residuals in Highest Intensity Structure: {stdConnectedStructure:.4f} degrees")
+    PrintNumberValidPixels(largestConnectedComponentResiduals)
+    AreaCalculation(largestConnectedComponentResiduals)
+    VolumeCalculation(largestConnectedComponentResiduals)
+    FluxCalculation(mask, iHDU)
+    print(f"Standard Deviation of Residuals: {stdConnectedStructure:.4f} degrees")
     BoxCarDictionary[np.round(boxCarSize, 1)] = np.round(stdConnectedStructure, 3)
 
 
@@ -169,12 +175,12 @@ def BigMain(boxCarSize):
 
     # Make sure to * 1000 in order to make it mJy / beam rather than Jy / beam
     im = ax.imshow(polarizedIntensity * 1000, cmap='gnuplot', origin='lower')
-    plt.title('Residual Angular Deviation over Polarized Intensity Map (OMC-1)')
+    plt.title('Angular Direction over Polarized Intensity Map')
     ax.set_xlabel('RA (J2000)')
     ax.set_ylabel('Dec (J2000)')
 
     cbar = plt.colorbar(im, ax=ax)
-    cbar.set_label('Polarized 870 μm Intensity (mJy/beam)')
+    cbar.set_label('Polarized 850 μm Intensity (mJy/beam)')
 
     X, Y = np.meshgrid(np.arange(polarizationAngleData.shape[1]), np.arange(polarizationAngleData.shape[0]))
 
